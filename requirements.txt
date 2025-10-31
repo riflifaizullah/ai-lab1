@@ -1,0 +1,6 @@
+flask==3.0.0
+flask-cors==4.0.0
+folium==0.15.1
+osmnx==1.9.1
+networkx==3.2.1
+geopy==2.4.1

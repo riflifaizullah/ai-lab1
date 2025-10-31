@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Pathfinding - Kuala Lumpur Routes</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151932;
+            --bg-card: #1a1f3a;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --accent-tertiary: #06b6d4;
+            --border-color: #27273a;
+            --success: #10b981;
+            --error: #ef4444;
+            --shadow: rgba(0, 0, 0, 0.5);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --accent-tertiary: #06b6d4;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Added modern header with dark mode toggle */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 5px;
+        }
+
+        .header-content p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent-primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 24px var(--shadow);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover:before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Enhanced loading animation */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .spinner:before,
+        .spinner:after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: var(--accent-primary);
+        }
+
+        .spinner:before {
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner:after {
+            width: 40px;
+            height: 40px;
+            top: 5px;
+            left: 5px;
+            border-top-color: var(--accent-secondary);
+            animation: spin 0.7s linear infinite reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Modern result cards with stats */
+        .result {
+            display: none;
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .stat-value.large {
+            font-size: 2rem;
+        }
+
+        .map-container {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            min-height: 500px;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            border: 1px solid var(--error);
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        /* Tech-inspired examples section */
+        .examples {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .examples h4 {
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .examples ul {
+            list-style: none;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .examples li {
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .examples li:before {
+            content: "▸";
+            color: var(--accent-tertiary);
+            font-weight: bold;
+        }
+
+        /* Recent searches feature */
+        .recent-searches {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .recent-searches h4 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .recent-item {
+            background: var(--bg-secondary);
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .recent-item:hover {
+            background: var(--accent-primary);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .recent-item-route {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+        }
+
+        .recent-item:hover .recent-item-route {
+            color: white;
+        }
+
+        /* Export button */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-primary);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="container">
+        <!-- New header with theme toggle -->
+        <div class="header">
+            <div class="header-content">
+                <h1>A* Pathfinding System</h1>
+                <p>Intelligent route optimization for Kuala Lumpur</p>
+            </div>
+            <button class="theme-toggle" id="themeToggle">
+                <span id="themeIcon">🌙</span>
+                <span id="themeText">Dark Mode</span>
+            </button>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Panel: Input Form -->
+            <div>
+                <div class="card">
+                    <h2 class="card-title">Route Configuration</h2>
+                    <form id="routeForm">
+                        <div class="input-group">
+                            <label for="startLocation">Starting Point</label>
+                            <div class="input-wrapper">
+                                <span class="input-icon">📍</span>
+                                <input 
+                                    type="text" 
+                                    id="startLocation" 
+                                    placeholder="Enter starting location"
+                                    required
+                                    list="locationSuggestions"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="endLocation">Destination</label>
+                            <div class="input-wrapper">
+                                <span class="input-icon">🎯</span>
+                                <input 
+                                    type="text" 
+                                    id="endLocation" 
+                                    placeholder="Enter destination"
+                                    required
+                                    list="locationSuggestions"
+                                >
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn" id="findRouteBtn">
+                            🚀 Calculate Optimal Route
+                        </button>
+
+                        <div class="examples">
+                            <h4>Popular Locations</h4>
+                            <ul>
+                                <li>Universiti Putra Malaysia</li>
+                                <li>KLCC Tower</li>
+                                <li>Batu Caves</li>
+                                <li>Merdeka Square</li>
+                                <li>KL Sentral</li>
+                                <li>Bukit Bintang</li>
+                            </ul>
+                        </div>
+                    </form>
+
+                    <!-- Added autocomplete suggestions dropdown -->
+                    <datalist id="locationSuggestions">
+                        <option value="Universiti Putra Malaysia">
+                        <option value="UPM">
+                        <option value="KLCC">
+                        <option value="Petronas Twin Towers">
+                        <option value="Bukit Bintang">
+                        <option value="KL Sentral">
+                        <option value="Mid Valley">
+                        <option value="Pavilion KL">
+                        <option value="Sunway Pyramid">
+                        <option value="Batu Caves">
+                        <option value="Merdeka Square">
+                        <option value="Dataran Merdeka">
+                        <option value="National Mosque">
+                        <option value="Masjid Negara">
+                        <option value="Central Market">
+                        <option value="Chinatown">
+                        <option value="KL Tower">
+                        <option value="Menara KL">
+                        <option value="Titiwangsa Lake">
+                        <option value="IOI City Mall">
+                        <option value="Sunway Lagoon">
+                        <option value="One Utama">
+                        <option value="The Gardens Mall">
+                        <option value="Suria KLCC">
+                        <option value="Lot 10">
+                    </datalist>
+
+                    <!-- Recent searches section -->
+                    <div class="recent-searches" id="recentSearches" style="display: none;">
+                        <h4>Recent Searches</h4>
+                        <div id="recentList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Results -->
+            <div>
+                <div class="card">
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p class="loading-text">Computing optimal path using A* algorithm...</p>
+                        <p class="loading-text" style="margin-top: 8px; font-size: 0.85rem;">Analyzing road network topology</p>
+                    </div>
+
+                    <div class="error" id="error"></div>
+
+                    <div class="result" id="result">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 class="card-title" style="margin: 0;">Route Analysis</h2>
+                            <span class="badge">A* Algorithm</span>
+                        </div>
+
+                        <!-- Stats grid now hidden by default, shown after search -->
+                        <div class="stats-grid" id="statsGrid" style="display: none;">
+                            <div class="stat-card">
+                                <div class="stat-label">Distance</div>
+                                <div class="stat-value large" id="distance">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Nodes Explored</div>
+                                <div class="stat-value" id="nodesExplored">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Est. Time</div>
+                                <div class="stat-value" id="estimatedTime">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Path Efficiency</div>
+                                <div class="stat-value" id="efficiency">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Algorithm visualization hidden by default -->
+                        <div class="card" id="algoViz" style="background: var(--bg-secondary); padding: 16px; margin-bottom: 20px; border-radius: 12px; display: none;">
+                            <h4 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 0.9rem;">Algorithm Visualization</h4>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 0.85rem;">
+                                <div>
+                                    <span style="color: var(--text-secondary);">Path Nodes:</span>
+                                    <span style="color: var(--text-primary); font-weight: 600; margin-left: 8px;" id="pathLength">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-secondary);">Total Graph Nodes:</span>
+                                    <span style="color: var(--text-primary); font-weight: 600; margin-left: 8px;" id="totalNodes">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-secondary);">Search Efficiency:</span>
+                                    <span style="color: var(--success); font-weight: 600; margin-left: 8px;" id="searchEfficiency">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-secondary);">Algorithm:</span>
+                                    <span style="color: var(--accent-secondary); font-weight: 600; margin-left: 8px;">A* Search</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-primary);">
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                                    <strong style="color: var(--accent-primary);">Visualization:</strong> Light blue dots show explored nodes during A* search. The bold blue line is the optimal path found.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Action buttons hidden by default -->
+                        <div class="action-buttons" id="actionButtons" style="display: none;">
+                            <button class="btn-secondary" id="exportBtn">📥 Export Route</button>
+                            <button class="btn-secondary" id="shareBtn">🔗 Copy Link</button>
+                            <button class="btn-secondary" id="newSearchBtn">🔄 New Search</button>
+                        </div>
+
+                        <!-- Map container now visible by default -->
+                        <div class="map-container" id="mapContainer" style="margin-top: 20px;">
+                            <div style="display: flex; align-items: center; justify-content: center; height: 500px; color: var(--text-secondary);">
+                                <div style="text-align: center;">
+                                    <div class="spinner"></div>
+                                    <p style="margin-top: 20px;">Loading map...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeText = document.getElementById('themeText');
+        const body = document.body;
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        body.setAttribute('data-theme', savedTheme);
+        updateThemeButton(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updateThemeButton(theme) {
+            if (theme === 'dark') {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark Mode';
+            } else {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light Mode';
+            }
+        }
+
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+
+        function addToRecent(start, end) {
+            const search = { start, end, timestamp: Date.now() };
+            recentSearches = [search, ...recentSearches.filter(s => 
+                !(s.start === start && s.end === end)
+            )].slice(0, 5);
+            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+            displayRecentSearches();
+        }
+
+        function displayRecentSearches() {
+            const recentSection = document.getElementById('recentSearches');
+            const recentList = document.getElementById('recentList');
+            
+            if (recentSearches.length === 0) {
+                recentSection.style.display = 'none';
+                return;
+            }
+
+            recentSection.style.display = 'block';
+            recentList.innerHTML = recentSearches.map(search => `
+                <div class="recent-item" onclick="fillSearch('${search.start}', '${search.end}')">
+                    <div class="recent-item-route">
+                        <span>📍 ${search.start}</span>
+                        <span>→</span>
+                        <span>🎯 ${search.end}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function fillSearch(start, end) {
+            document.getElementById('startLocation').value = start;
+            document.getElementById('endLocation').value = end;
+        }
+
+        displayRecentSearches();
+
+        async function loadDefaultMap() {
+            try {
+                const response = await fetch('/default-map');
+                const data = await response.json();
+                
+                if (data.map_html) {
+                    document.getElementById('mapContainer').innerHTML = data.map_html;
+                    // Show the result section with just the map
+                    document.getElementById('result').classList.add('active');
+                }
+            } catch (err) {
+                console.error('Failed to load default map:', err);
+                document.getElementById('mapContainer').innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 500px; color: var(--text-secondary);">
+                        <p>Map will appear here after searching for a route</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load map when page loads
+        loadDefaultMap();
+
+        // Form submission
+        const form = document.getElementById('routeForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const findRouteBtn = document.getElementById('findRouteBtn');
+
+        let currentRouteData = null;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const startLocation = document.getElementById('startLocation').value;
+            const endLocation = document.getElementById('endLocation').value;
+
+            // Reset UI
+            loading.classList.add('active');
+            result.classList.remove('active');
+            error.classList.remove('active');
+            findRouteBtn.disabled = true;
+
+            try {
+                const response = await fetch('/find-route', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start: startLocation,
+                        end: endLocation
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to find route');
+                }
+
+                currentRouteData = { ...data, start: startLocation, end: endLocation };
+
+                document.getElementById('distance').textContent = `${data.distance_km} km`;
+                document.getElementById('nodesExplored').textContent = data.nodes_explored;
+                
+                const estimatedMinutes = Math.round((data.distance_km / 40) * 60);
+                document.getElementById('estimatedTime').textContent = `${estimatedMinutes} min`;
+                
+                document.getElementById('efficiency').textContent = `${data.efficiency_ratio}%`;
+                
+                document.getElementById('pathLength').textContent = data.path_length;
+                document.getElementById('totalNodes').textContent = data.total_nodes.toLocaleString();
+                document.getElementById('searchEfficiency').textContent = `${data.efficiency_ratio}%`;
+                
+                document.getElementById('statsGrid').style.display = 'grid';
+                document.getElementById('algoViz').style.display = 'block';
+                document.getElementById('actionButtons').style.display = 'flex';
+                
+                document.getElementById('mapContainer').innerHTML = data.map_html;
+
+                result.classList.add('active');
+                addToRecent(startLocation, endLocation);
+
+            } catch (err) {
+                error.textContent = `⚠️ Error: ${err.message}`;
+                error.classList.add('active');
+            } finally {
+                loading.classList.remove('active');
+                findRouteBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (!currentRouteData) return;
+            
+            const exportData = {
+                start: currentRouteData.start,
+                end: currentRouteData.end,
+                distance_km: currentRouteData.distance_km,
+                nodes_explored: currentRouteData.nodes_explored,
+                algorithm: 'A* Search',
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `route_${Date.now()}.json`;
+            a.click();
+        });
+
+        document.getElementById('shareBtn').addEventListener('click', () => {
+            if (!currentRouteData) return;
+            
+            const shareUrl = `${window.location.origin}?start=${encodeURIComponent(currentRouteData.start)}&end=${encodeURIComponent(currentRouteData.end)}`;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('✅ Route link copied to clipboard!');
+            });
+        });
+
+        document.getElementById('newSearchBtn').addEventListener('click', () => {
+            result.classList.remove('active');
+            document.getElementById('startLocation').value = '';
+            document.getElementById('endLocation').value = '';
+            document.getElementById('startLocation').focus();
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('start') && urlParams.has('end')) {
+            document.getElementById('startLocation').value = urlParams.get('start');
+            document.getElementById('endLocation').value = urlParams.get('end');
+        }
+    </script>
+</body>
+</html>
